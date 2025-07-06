@@ -7,28 +7,28 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
+	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
-func GetUserHandler(db *gorm.DB, rdb *redis.Client, ctx context.Context) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		id := chi.URLParam(r, "id")
+func GetUserHandler(db *gorm.DB, rdb *redis.Client, ctx context.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
 
-		var user models.User
 		val, err := rdb.Get(ctx, "user:"+id).Result()
 		if err == nil {
-			fmt.Fprintf(w, "From Cache: %s\n", val)
+			c.String(http.StatusOK, "From Cache: %s", val)
 			return
 		}
 
+		var user models.User
 		if err := db.First(&user, id).Error; err != nil {
-			http.Error(w, "user not found", http.StatusNotFound)
+			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 			return
 		}
 
 		rdb.Set(ctx, "user:"+id, fmt.Sprintf("%s <%s>", user.Name, user.Email), time.Minute*5)
-		fmt.Fprintf(w, "From DB: %s <%s>\n", user.Name, user.Email)
+		c.String(http.StatusOK, "From DB: %s <%s>", user.Name, user.Email)
 	}
 }

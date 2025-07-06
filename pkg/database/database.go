@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/go-chi/chi/v5"
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/postgres"
@@ -38,27 +38,17 @@ func StartServer() {
 		log.Fatal("failed to connect to database:", err)
 	}
 
-	err = db.AutoMigrate(&models.User{})
-	if err != nil {
-		log.Fatal("failed to migrate database:", err)
-	}
-
-	redisAddr := os.Getenv("REDIS_ADDR")
-	if redisAddr == "" {
-		redisAddr = "localhost:6379"
-	}
+	db.AutoMigrate(&models.User{})
 
 	rdb := redis.NewClient(&redis.Options{
-		Addr: redisAddr,
+		Addr: os.Getenv("REDIS_ADDR"),
 	})
 
-	r := chi.NewRouter()
-	r.Post("/users", handlers.CreateUserHandler(db))
-	r.Get("/users/{id}", handlers.GetUserHandler(db, rdb, ctx))
+	router := gin.Default()
+
+	router.POST("/users", handlers.CreateUserHandler(db))
+	router.GET("/users/:id", handlers.GetUserHandler(db, rdb, ctx))
 
 	fmt.Println("Server is running on :8080")
-	err = http.ListenAndServe(":8080", r)
-	if err != nil {
-		log.Fatal(err)
-	}
+	http.ListenAndServe(":8080", router)
 }

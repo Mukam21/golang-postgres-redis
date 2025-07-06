@@ -1,25 +1,24 @@
 package handlers
 
 import (
-	"fmt"
 	"golang_postgresql_redis/pkg/models"
 	"net/http"
 
+	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-func CreateUserHandler(db *gorm.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		name := r.URL.Query().Get("name")
-		email := r.URL.Query().Get("email")
+func CreateUserHandler(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		name := c.Query("name")
+		email := c.Query("email")
 		if name == "" || email == "" {
-			http.Error(w, "name and email are required", http.StatusBadRequest)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "name and email are required"})
 			return
 		}
 
 		user := models.User{Name: name, Email: email}
 		db.Create(&user)
-		w.WriteHeader(http.StatusCreated)
-		fmt.Fprintf(w, "User created: %+v\n", user)
+		c.JSON(http.StatusCreated, user)
 	}
 }
